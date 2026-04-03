@@ -489,7 +489,7 @@ n_ooc_r_detected = int(((spc["ranges"] > spc["UCL_R"]) |
 #  PAGE LAYOUT
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown(
-    '<div class="page-title">Statistical Process Control</div>'
+    '<div class="page-title">BAT 3301 – Colazo – SPC Demo</div>'
     '<div class="page-sub">'
     'X̄ and R charts · Sargent (Shewhart) coefficients · 3σ control limits'
     '</div>',
@@ -549,10 +549,16 @@ st.markdown('<div class="section-hdr">X̄ Chart (Subgroup Means)</div>',
 st.plotly_chart(xbar_chart(spc, show_zones),
                 use_container_width=True, config={"displayModeBar": False})
 if n_ooc_x > 0:
+    shift_units = ooc_x_shift * sigma
+    cl_half     = c["A2"] * spc["rbar"]        # half-width of 3σ control limits
     st.caption(
         f"X̄ OOC injection: {n_ooc_x} subgroup(s) at position(s) "
         f"{[i+1 for i in ooc_x_idx]}  ·  "
-        f"shift = {ooc_x_shift:.1f}σ {ooc_x_dir}"
+        f"shift = {ooc_x_shift:.1f}σ {ooc_x_dir}  "
+        f"({ooc_x_shift:.1f} × σ = {ooc_x_shift:.1f} × {sigma:.2f} = {shift_units:.2f} units).  "
+        f"The 3σ control limits span ±{cl_half:.2f} units from X̄̄, "
+        f"so a {shift_units:.2f}-unit shift "
+        f"{'reliably exceeds' if shift_units > cl_half else 'may not exceed'} the limits."
     )
 
 st.markdown('<div class="section-hdr">R Chart (Subgroup Ranges)</div>',
@@ -658,8 +664,8 @@ def style_coef_table(styler):
     red_cols = ["D₃", "D₄", "R UCL  (D₄·R̄)", "R LCL  (D₃·R̄)"]
 
     def col_color(col):
-        if col in red_cols:
-            # Only colour non-highlighted rows (highlighted rows handled above)
+        # col is a pandas Series; use col.name to get the column label
+        if col.name in red_cols:
             return [
                 "" if idx == n_sample else "color:#dc2626;"
                 for idx in df_coef.index
