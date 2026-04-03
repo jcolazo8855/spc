@@ -624,7 +624,7 @@ if show_data_tbl:
     )
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  COEFFICIENTS TABLE (n = 4 to 8)
+#  COEFFICIENTS TABLE (n = 4 to 8)  — rendered as styled st.dataframe()
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 st.markdown(
@@ -633,64 +633,112 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Build table rows n=4..8
-table_rows = ""
+# Build DataFrame
+coef_rows = []
 for n in range(4, 9):
-    cc     = COEFS[n]
-    is_cur = (n == n_sample)
-    hl     = ' class="hl"' if is_cur else ""
-    bg     = ' style="background:#eff6ff;"' if is_cur else ""
-    table_rows += f"""
-    <tr{bg}>
-        <td{hl} style="font-weight:{'700' if is_cur else '400'};
-                       color:{'#1e40af' if is_cur else '#374151'};">
-            {'<strong>' if is_cur else ''}{n}{'  ◀ current' if is_cur else ''}{'</strong>' if is_cur else ''}
-        </td>
-        <td{hl}>{cc['d2']:.3f}</td>
-        <td{hl}>{cc['d3']:.3f}</td>
-        <td{hl}>{cc['A2']:.3f}</td>
-        <td{hl} style="color:#dc2626;">{cc['D3']:.3f}</td>
-        <td{hl} style="color:#dc2626;">{cc['D4']:.3f}</td>
-        <td{hl}>{cc['A2']:.3f} × R̄</td>
-        <td{hl} style="color:#dc2626;">{cc['D4']:.3f} × R̄</td>
-        <td{hl} style="color:#dc2626;">{"0" if cc['D3']==0 else f"{cc['D3']:.3f} × R̄"}</td>
-    </tr>"""
+    cc = COEFS[n]
+    coef_rows.append({
+        "n":              n,
+        "d₂":             cc["d2"],
+        "d₃":             cc["d3"],
+        "A₂":             cc["A2"],
+        "D₃":             cc["D3"],
+        "D₄":             cc["D4"],
+        "X̄ UCL/LCL  (±A₂·R̄)": cc["A2"],
+        "R UCL  (D₄·R̄)":        cc["D4"],
+        "R LCL  (D₃·R̄)":        cc["D3"],
+    })
 
-st.markdown(f"""
-<table class="coef-table">
-  <thead>
-    <tr>
-      <th>n</th>
-      <th>d₂</th>
-      <th>d₃</th>
-      <th>A₂</th>
-      <th>D₃</th>
-      <th>D₄</th>
-      <th>X̄ UCL / LCL offset</th>
-      <th>R chart UCL</th>
-      <th>R chart LCL</th>
-    </tr>
-  </thead>
-  <tbody>
-    {table_rows}
-  </tbody>
-</table>
-""", unsafe_allow_html=True)
+df_coef = pd.DataFrame(coef_rows).set_index("n")
 
-st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+# Column format: 3 decimal places
+fmt = {col: "{:.3f}" for col in df_coef.columns}
+
+def style_coef_table(styler):
+    # Highlight current n row in blue tint
+    def row_style(row):
+        if row.name == n_sample:
+            return [
+                "background-color:#dbeafe; color:#1e40af; font-weight:700;"
+            ] * len(row)
+        return [""] * len(row)
+
+    # Column-level colours: D₃, D₄ and the limit columns in red
+    red_cols = ["D₃", "D₄", "R UCL  (D₄·R̄)", "R LCL  (D₃·R̄)"]
+
+    def col_color(col):
+        if col in red_cols:
+            # Only colour non-highlighted rows (highlighted rows handled above)
+            return [
+                "" if idx == n_sample else "color:#dc2626;"
+                for idx in df_coef.index
+            ]
+        return [""] * len(df_coef)
+
+    styler = (
+        styler
+        .apply(row_style, axis=1)
+        .apply(col_color, axis=0)
+        .format(fmt)
+        .set_table_styles([
+            # Header
+            {"selector": "thead th",
+             "props": [("background-color", "#f1f5f9"),
+                       ("color", "#374151"),
+                       ("font-weight", "600"),
+                       ("font-size", "13px"),
+                       ("text-align", "center"),
+                       ("padding", "10px 14px"),
+                       ("border", "1px solid #e2e8f0")]},
+            # Cells
+            {"selector": "tbody td",
+             "props": [("text-align", "center"),
+                       ("padding", "9px 14px"),
+                       ("border", "1px solid #e2e8f0"),
+                       ("font-size", "13px")]},
+            # Index column
+            {"selector": "tbody th",
+             "props": [("text-align", "center"),
+                       ("padding", "9px 14px"),
+                       ("border", "1px solid #e2e8f0"),
+                       ("font-size", "13px"),
+                       ("font-weight", "600"),
+                       ("background-color", "#f8f9fc")]},
+            # Alternate row shading
+            {"selector": "tbody tr:nth-child(even) td",
+             "props": [("background-color", "#f8f9fc")]},
+        ])
+    )
+    return styler
+
+st.dataframe(
+    style_coef_table(df_coef.style),
+    use_container_width=True,
+    height=215,          # fits 5 rows without scroll
+)
+
+# Caption below the table
+st.caption(
+    f"▶ Row highlighted in blue = current selection (n = {n_sample}).  "
+    "D₃ = 0 for n ≤ 6 (no lower control limit on the R chart)."
+)
+
+st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+# Formula reference (plain markdown — renders reliably everywhere)
 st.markdown("""
-<div style="font-size:12px;color:#94a3b8;line-height:1.8;padding:10px 0;">
-<strong>Formulas:</strong>
-&nbsp; UCL<sub>X̄</sub> = X̄̄ + A₂·R̄ &nbsp;·&nbsp;
-LCL<sub>X̄</sub> = X̄̄ − A₂·R̄ &nbsp;·&nbsp;
-UCL<sub>R</sub> = D₄·R̄ &nbsp;·&nbsp;
-LCL<sub>R</sub> = D₃·R̄ &nbsp;·&nbsp;
-σ̂ = R̄ / d₂ &nbsp;·&nbsp;
-A₂ = 3 / (d₂√n) &nbsp;·&nbsp;
+**Formulas** &nbsp;&nbsp;
+UCL(X̄) = X̄̄ + A₂·R̄ &nbsp;·&nbsp;
+LCL(X̄) = X̄̄ − A₂·R̄ &nbsp;·&nbsp;
+UCL(R) = D₄·R̄ &nbsp;·&nbsp;
+LCL(R) = D₃·R̄ &nbsp;·&nbsp;
+σ̂ = R̄ / d₂
+
+**Derivations** &nbsp;&nbsp;
+A₂ = 3 / (d₂ √n) &nbsp;·&nbsp;
 D₄ = 1 + 3(d₃/d₂) &nbsp;·&nbsp;
-D₃ = max(0, 1 − 3(d₃/d₂))<br>
-<strong>d₂</strong> = expected value of the relative range W = R/σ &nbsp;·&nbsp;
-<strong>d₃</strong> = standard deviation of W (Studentized-range distribution) &nbsp;·&nbsp;
-D₃ = 0 for n ≤ 6 (no lower control limit on the R chart).
-</div>
-""", unsafe_allow_html=True)
+D₃ = max(0, 1 − 3(d₃/d₂))
+
+*d₂ = expected value of the relative range W = R/σ; &nbsp;
+d₃ = standard deviation of W (Studentized-range distribution)*
+""")
