@@ -437,13 +437,7 @@ with st.sidebar:
     # ── X-bar OOC injection ──────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">X-bar out-of-control injection</p>',
                 unsafe_allow_html=True)
-    n_ooc_x   = st.slider("Number of OOC subgroups (X̄)", 0, 6, 2)
-    ooc_x_pos = st.text_input(
-        "Subgroup indices (1-based, comma-separated)",
-        value=", ".join(str(i) for i in [6, 16][:n_ooc_x]),
-        help="Leave blank to place them automatically",
-        key="ooc_x_pos",
-    )
+    n_ooc_x     = st.slider("Number of OOC subgroups (X̄)", 0, 6, 2)
     ooc_x_shift = st.slider("Mean shift magnitude (σ units)", 1.0, 6.0, 3.5, 0.1,
                              disabled=(n_ooc_x == 0))
     ooc_x_dir   = st.selectbox("Shift direction",
@@ -453,13 +447,7 @@ with st.sidebar:
     # ── R OOC injection ──────────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">R chart out-of-control injection</p>',
                 unsafe_allow_html=True)
-    n_ooc_r   = st.slider("Number of OOC subgroups (R)", 0, 4, 1)
-    ooc_r_pos = st.text_input(
-        "Subgroup indices (1-based, comma-separated)",
-        value=", ".join(str(i) for i in [11][:n_ooc_r]),
-        help="Leave blank to place them automatically",
-        key="ooc_r_pos",
-    )
+    n_ooc_r    = st.slider("Number of OOC subgroups (R)", 0, 4, 1)
     ooc_r_mult = st.slider("Range inflation multiplier", 2.0, 8.0, 4.0, 0.5,
                             help="σ multiplied by this for the spiked subgroups",
                             disabled=(n_ooc_r == 0))
@@ -469,25 +457,16 @@ with st.sidebar:
     show_zones   = st.checkbox("Show sigma zones (X̄ chart)", value=True)
     show_data_tbl= st.checkbox("Show subgroup data table",   value=False)
 
-# ── Parse index inputs ────────────────────────────────────────────────────────
-def parse_indices(raw: str, n_ooc: int, k: int, default_start: int = 5) -> list:
-    """Parse comma-separated 1-based indices; fallback to evenly spaced."""
-    raw = raw.strip()
-    if raw:
-        try:
-            idxs = [int(x.strip()) - 1 for x in raw.split(",") if x.strip()]
-            idxs = [i for i in idxs if 0 <= i < k]
-            return idxs[:n_ooc]
-        except ValueError:
-            pass
-    # Auto-place: evenly spaced
+# ── Auto-place OOC subgroup indices evenly across the k subgroups ─────────────
+def auto_place(n_ooc: int, k: int, default_start: int) -> list:
+    """Return n_ooc evenly-spaced 0-based indices within [0, k)."""
     if n_ooc == 0:
         return []
     step = max(1, k // (n_ooc + 1))
     return [(default_start + i * step) % k for i in range(n_ooc)]
 
-ooc_x_idx = parse_indices(ooc_x_pos, n_ooc_x, n_subgroups, default_start=5)
-ooc_r_idx  = parse_indices(ooc_r_pos, n_ooc_r, n_subgroups, default_start=10)
+ooc_x_idx = auto_place(n_ooc_x, n_subgroups, default_start=4)
+ooc_r_idx  = auto_place(n_ooc_r, n_subgroups, default_start=9)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  COMPUTE
@@ -569,11 +548,23 @@ st.markdown('<div class="section-hdr">X̄ Chart (Subgroup Means)</div>',
             unsafe_allow_html=True)
 st.plotly_chart(xbar_chart(spc, show_zones),
                 use_container_width=True, config={"displayModeBar": False})
+if n_ooc_x > 0:
+    st.caption(
+        f"X̄ OOC injection: {n_ooc_x} subgroup(s) at position(s) "
+        f"{[i+1 for i in ooc_x_idx]}  ·  "
+        f"shift = {ooc_x_shift:.1f}σ {ooc_x_dir}"
+    )
 
 st.markdown('<div class="section-hdr">R Chart (Subgroup Ranges)</div>',
             unsafe_allow_html=True)
 st.plotly_chart(r_chart(spc),
                 use_container_width=True, config={"displayModeBar": False})
+if n_ooc_r > 0:
+    st.caption(
+        f"R OOC injection: {n_ooc_r} subgroup(s) at position(s) "
+        f"{[i+1 for i in ooc_r_idx]}  ·  "
+        f"range multiplier = {ooc_r_mult:.1f}×"
+    )
 
 # ── OOC summary ───────────────────────────────────────────────────────────────
 total_ooc = n_ooc_x_detected + n_ooc_r_detected
