@@ -204,17 +204,17 @@ def kpi(label, value, color):
 #  DATA GENERATION
 # ═══════════════════════════════════════════════════════════════════════════════
 def generate_data(
-    k: int,          # number of subgroups
-    n: int,          # subgroup size
+    k: int,          # number of samples
+    n: int,          # sample size
     mu: float,       # process mean
-    sigma: float,    # within-subgroup std dev
+    sigma: float,    # within-sample std dev
     # X-bar OOC injection
     ooc_x_indices: list,
     ooc_x_shift: float,      # shift in σ units (positive or negative)
     ooc_x_direction: str,    # "positive" | "negative" | "alternating"
     # R OOC injection
     ooc_r_indices: list,
-    ooc_r_mult: float,       # multiply σ by this for those subgroups
+    ooc_r_mult: float,       # multiply σ by this for those samples
     seed: int = 42,
 ) -> np.ndarray:
     """Return array shape (k, n)."""
@@ -229,7 +229,7 @@ def generate_data(
                     else (1 if pos % 2 == 0 else -1))
             data[idx] += sign * ooc_x_shift * sigma
 
-    # Inject variability inflation (R OOC) — add extra noise to subgroup
+    # Inject variability inflation (R OOC) — add extra noise to sample
     for idx in ooc_r_indices:
         if 0 <= idx < k:
             data[idx] += rng.normal(0, (ooc_r_mult - 1) * sigma, n)
@@ -282,7 +282,7 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
     UCL_x   = spc["UCL_x"]
     LCL_x   = spc["LCL_x"]
     xbarbar = spc["xbarbar"]
-    subgroups = list(range(1, k + 1))
+    samples = list(range(1, k + 1))
 
     ooc_mask = (xbar > UCL_x) | (xbar < LCL_x)
     ic_mask  = ~ooc_mask
@@ -302,7 +302,7 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
 
     # Connecting line
     fig.add_trace(go.Scatter(
-        x=subgroups, y=xbar,
+        x=samples, y=xbar,
         mode="lines",
         line=dict(color="#94a3b8", width=1.2),
         showlegend=False,
@@ -312,7 +312,7 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
     # In-control points
     if ic_mask.any():
         fig.add_trace(go.Scatter(
-            x=[s for s, m in zip(subgroups, ic_mask) if m],
+            x=[s for s, m in zip(samples, ic_mask) if m],
             y=xbar[ic_mask],
             mode="markers",
             name="In control",
@@ -324,7 +324,7 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
     # Out-of-control points
     if ooc_mask.any():
         fig.add_trace(go.Scatter(
-            x=[s for s, m in zip(subgroups, ooc_mask) if m],
+            x=[s for s, m in zip(samples, ooc_mask) if m],
             y=xbar[ooc_mask],
             mode="markers+text",
             name="Out of control",
@@ -352,7 +352,7 @@ def r_chart(spc: dict) -> go.Figure:
     UCL_R   = spc["UCL_R"]
     LCL_R   = spc["LCL_R"]
     rbar    = spc["rbar"]
-    subgroups = list(range(1, k + 1))
+    samples = list(range(1, k + 1))
 
     ooc_mask = (ranges > UCL_R) | (ranges < LCL_R)
     ic_mask  = ~ooc_mask
@@ -366,7 +366,7 @@ def r_chart(spc: dict) -> go.Figure:
 
     # Connecting line
     fig.add_trace(go.Scatter(
-        x=subgroups, y=ranges,
+        x=samples, y=ranges,
         mode="lines",
         line=dict(color="#94a3b8", width=1.2),
         showlegend=False,
@@ -375,7 +375,7 @@ def r_chart(spc: dict) -> go.Figure:
 
     if ic_mask.any():
         fig.add_trace(go.Scatter(
-            x=[s for s, m in zip(subgroups, ic_mask) if m],
+            x=[s for s, m in zip(samples, ic_mask) if m],
             y=ranges[ic_mask],
             mode="markers",
             name="In control",
@@ -386,7 +386,7 @@ def r_chart(spc: dict) -> go.Figure:
 
     if ooc_mask.any():
         fig.add_trace(go.Scatter(
-            x=[s for s, m in zip(subgroups, ooc_mask) if m],
+            x=[s for s, m in zip(samples, ooc_mask) if m],
             y=ranges[ooc_mask],
             mode="markers+text",
             name="Out of control",
@@ -417,10 +417,10 @@ with st.sidebar:
     # ── Process parameters ───────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">Process parameters</p>', unsafe_allow_html=True)
     n_sample   = st.slider("Sample size (n)", 2, 10, 5,
-                           help="Number of individual measurements per subgroup")
-    n_subgroups = st.slider("Number of subgroups (k)", 10, 40, 25)
+                           help="Number of individual measurements per sample")
+    n_samples = st.slider("Number of samples (k)", 10, 40, 25)
     mu          = st.number_input("Process mean (μ)", value=100.0, step=1.0)
-    sigma       = st.number_input("Std dev within subgroup (σ)", value=2.0,
+    sigma       = st.number_input("Std dev within sample (σ)", value=2.0,
                                   min_value=0.01, step=0.1)
     seed        = st.number_input("Random seed", value=42, step=1,
                                   help="Change for a different random sample")
@@ -445,7 +445,7 @@ with st.sidebar:
     # ── X-bar OOC injection ──────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">X-bar out-of-control injection</p>',
                 unsafe_allow_html=True)
-    n_ooc_x     = st.slider("Number of OOC subgroups (X̄)", 0, 6, 2)
+    n_ooc_x     = st.slider("Number of OOC samples (X̄)", 0, 6, 2)
     ooc_x_shift = st.slider("Mean shift magnitude (σ units)", 1.0, 6.0, 3.5, 0.1,
                              disabled=(n_ooc_x == 0))
     ooc_x_dir   = st.selectbox("Shift direction",
@@ -455,17 +455,17 @@ with st.sidebar:
     # ── R OOC injection ──────────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">R chart out-of-control injection</p>',
                 unsafe_allow_html=True)
-    n_ooc_r    = st.slider("Number of OOC subgroups (R)", 0, 4, 1)
+    n_ooc_r    = st.slider("Number of OOC samples (R)", 0, 4, 1)
     ooc_r_mult = st.slider("Range inflation multiplier", 2.0, 8.0, 4.0, 0.5,
-                            help="σ multiplied by this for the spiked subgroups",
+                            help="σ multiplied by this for the spiked samples",
                             disabled=(n_ooc_r == 0))
 
     # ── Display options ──────────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">Display options</p>', unsafe_allow_html=True)
     show_zones   = st.checkbox("Show sigma zones (X̄ chart)", value=True)
-    show_data_tbl= st.checkbox("Show subgroup data table",   value=False)
+    show_data_tbl= st.checkbox("Show sample data table",   value=False)
 
-# ── Auto-place OOC subgroup indices evenly across the k subgroups ─────────────
+# ── Auto-place OOC sample indices evenly across the k samples ─────────────
 def auto_place(n_ooc: int, k: int, default_start: int) -> list:
     """Return n_ooc evenly-spaced 0-based indices within [0, k)."""
     if n_ooc == 0:
@@ -473,14 +473,14 @@ def auto_place(n_ooc: int, k: int, default_start: int) -> list:
     step = max(1, k // (n_ooc + 1))
     return [(default_start + i * step) % k for i in range(n_ooc)]
 
-ooc_x_idx = auto_place(n_ooc_x, n_subgroups, default_start=4)
-ooc_r_idx  = auto_place(n_ooc_r, n_subgroups, default_start=9)
+ooc_x_idx = auto_place(n_ooc_x, n_samples, default_start=4)
+ooc_r_idx  = auto_place(n_ooc_r, n_samples, default_start=9)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  COMPUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 data = generate_data(
-    k=n_subgroups, n=n_sample, mu=mu, sigma=sigma,
+    k=n_samples, n=n_sample, mu=mu, sigma=sigma,
     ooc_x_indices=ooc_x_idx, ooc_x_shift=ooc_x_shift,
     ooc_x_direction=ooc_x_dir,
     ooc_r_indices=ooc_r_idx,  ooc_r_mult=(ooc_r_mult if n_ooc_r > 0 else 1.0),
@@ -560,7 +560,7 @@ if n_ooc_x > 0:
     shift_units = ooc_x_shift * sigma
     cl_half     = c["A2"] * spc["rbar"]        # half-width of 3σ control limits
     st.caption(
-        f"X̄ OOC injection: {n_ooc_x} subgroup(s) at position(s) "
+        f"X̄ OOC injection: {n_ooc_x} sample(s) at position(s) "
         f"{[i+1 for i in ooc_x_idx]}  ·  "
         f"shift = {ooc_x_shift:.1f}σ {ooc_x_dir}  "
         f"({ooc_x_shift:.1f} × σ = {ooc_x_shift:.1f} × {sigma:.2f} = {shift_units:.2f} units).  "
@@ -575,7 +575,7 @@ st.plotly_chart(r_chart(spc),
                 use_container_width=True, config={"displayModeBar": False})
 if n_ooc_r > 0:
     st.caption(
-        f"R OOC injection: {n_ooc_r} subgroup(s) at position(s) "
+        f"R OOC injection: {n_ooc_r} sample(s) at position(s) "
         f"{[i+1 for i in ooc_r_idx]}  ·  "
         f"range multiplier = {ooc_r_mult:.1f}×"
     )
@@ -590,15 +590,15 @@ if total_ooc > 0:
     st.markdown(f"""
 <div class="ooc-box" style="border-color:#fca5a5;background:#fef2f2;color:#7f1d1d;">
 <strong>⚠ Out-of-Control Signals Detected</strong><br>
-{"• X̄ chart: subgroups " + str(ooc_x_list) + " are beyond control limits<br>" if ooc_x_list else ""}
-{"• R chart: subgroups " + str(ooc_r_list) + " are beyond control limits" if ooc_r_list else ""}
+{"• X̄ chart: samples " + str(ooc_x_list) + " are beyond control limits<br>" if ooc_x_list else ""}
+{"• R chart: samples " + str(ooc_r_list) + " are beyond control limits" if ooc_r_list else ""}
 </div>
 """, unsafe_allow_html=True)
 else:
     st.markdown("""
 <div class="ooc-box" style="border-color:#86efac;background:#f0fdf4;color:#14532d;">
 <strong>✓ Process appears to be in statistical control</strong> —
-all subgroup means and ranges fall within the 3σ control limits.
+all sample means and ranges fall within the 3σ control limits.
 </div>
 """, unsafe_allow_html=True)
 
@@ -608,7 +608,7 @@ if show_data_tbl:
     st.markdown('<div class="section-hdr">Subgroup Data</div>', unsafe_allow_html=True)
     col_labels = [f"x{j+1}" for j in range(n_sample)]
     df_data = pd.DataFrame(data, columns=col_labels)
-    df_data.insert(0, "Subgroup", range(1, n_subgroups + 1))
+    df_data.insert(0, "Subgroup", range(1, n_samples + 1))
     df_data["X̄"]  = spc["xbar"].round(4)
     df_data["R"]   = spc["ranges"].round(4)
     df_data["OOC"] = [
