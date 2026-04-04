@@ -318,7 +318,7 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
             name="In control",
             marker=dict(color=C_IN, size=8, symbol="circle",
                         line=dict(color="#ffffff", width=1.5)),
-            hovertemplate="Subgroup %{x}<br>X̄ = %{y:.4f}<extra></extra>",
+            hovertemplate="Sample %{x}<br>X̄ = %{y:.4f}<extra></extra>",
         ))
 
     # Out-of-control points
@@ -334,13 +334,13 @@ def xbar_chart(spc: dict, show_zones: bool) -> go.Figure:
                   for v in xbar[ooc_mask]],
             textposition="top center",
             textfont=dict(color=C_OOC, size=13),
-            hovertemplate="Subgroup %{x}<br>X̄ = %{y:.4f} ⚠ OOC<extra></extra>",
+            hovertemplate="Sample %{x}<br>X̄ = %{y:.4f} ⚠ OOC<extra></extra>",
         ))
 
     fig.update_layout(
         **base_layout(height=340,
-                      xaxis_title="Subgroup",
-                      yaxis_title="Subgroup mean (X̄)"),
+                      xaxis_title="Sample",
+                      yaxis_title="Sample mean (X̄)"),
     )
     fig.update_xaxes(range=[0.2, k + 0.8], dtick=1 if k <= 25 else 5)
     return fig
@@ -381,7 +381,7 @@ def r_chart(spc: dict) -> go.Figure:
             name="In control",
             marker=dict(color="#0369a1", size=8, symbol="diamond",
                         line=dict(color="#ffffff", width=1.5)),
-            hovertemplate="Subgroup %{x}<br>R = %{y:.4f}<extra></extra>",
+            hovertemplate="Sample %{x}<br>R = %{y:.4f}<extra></extra>",
         ))
 
     if ooc_mask.any():
@@ -395,13 +395,13 @@ def r_chart(spc: dict) -> go.Figure:
             text=["▲" if v > UCL_R else "▼" for v in ranges[ooc_mask]],
             textposition="top center",
             textfont=dict(color=C_OOC, size=13),
-            hovertemplate="Subgroup %{x}<br>R = %{y:.4f} ⚠ OOC<extra></extra>",
+            hovertemplate="Sample %{x}<br>R = %{y:.4f} ⚠ OOC<extra></extra>",
         ))
 
     fig.update_layout(
         **base_layout(height=300,
-                      xaxis_title="Subgroup",
-                      yaxis_title="Subgroup range (R)"),
+                      xaxis_title="Sample",
+                      yaxis_title="Sample range (R)"),
     )
     fig.update_xaxes(range=[0.2, k + 0.8], dtick=1 if k <= 25 else 5)
     fig.update_yaxes(rangemode="tozero")
@@ -552,7 +552,7 @@ st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 # ═══════════════════════════════════════════════════════════════════════════════
 #  CHARTS
 # ═══════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="section-hdr">X̄ Chart (Subgroup Means)</div>',
+st.markdown('<div class="section-hdr">X̄ Chart (Sample Means)</div>',
             unsafe_allow_html=True)
 st.plotly_chart(xbar_chart(spc, show_zones),
                 use_container_width=True, config={"displayModeBar": False})
@@ -569,7 +569,7 @@ if n_ooc_x > 0:
         f"{'reliably exceeds' if shift_units > cl_half else 'may not exceed'} the limits."
     )
 
-st.markdown('<div class="section-hdr">R Chart (Subgroup Ranges)</div>',
+st.markdown('<div class="section-hdr">R Chart (Sample Ranges)</div>',
             unsafe_allow_html=True)
 st.plotly_chart(r_chart(spc),
                 use_container_width=True, config={"displayModeBar": False})
@@ -602,13 +602,13 @@ all sample means and ranges fall within the 3σ control limits.
 </div>
 """, unsafe_allow_html=True)
 
-# ── Subgroup data table ───────────────────────────────────────────────────────
+# ── Sample data table ───────────────────────────────────────────────────────
 if show_data_tbl:
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-    st.markdown('<div class="section-hdr">Subgroup Data</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-hdr">Sample Data</div>', unsafe_allow_html=True)
     col_labels = [f"x{j+1}" for j in range(n_sample)]
     df_data = pd.DataFrame(data, columns=col_labels)
-    df_data.insert(0, "Subgroup", range(1, n_samples + 1))
+    df_data.insert(0, "Sample", range(1, n_samples + 1))
     df_data["X̄"]  = spc["xbar"].round(4)
     df_data["R"]   = spc["ranges"].round(4)
     df_data["OOC"] = [
