@@ -430,9 +430,17 @@ with st.sidebar:
     st.markdown('<p class="sb-hdr">Sargent coefficients (auto)</p>',
                 unsafe_allow_html=True)
     col_c1, col_c2, col_c3 = st.columns(3)
-    col_c1.metric("A₂", f"{c['A2']:.3f}")
-    col_c2.metric("D₃", f"{c['D3']:.3f}")
-    col_c3.metric("D₄", f"{c['D4']:.3f}")
+    for col_w, label, val in [(col_c1, "A₂", c["A2"]),
+                               (col_c2, "D₃", c["D3"]),
+                               (col_c3, "D₄", c["D4"])]:
+        col_w.markdown(
+            f'<div style="text-align:center;padding:6px 2px;">'
+            f'<div style="font-size:10px;color:#94a3b8;font-weight:600;'
+            f'letter-spacing:1px;text-transform:uppercase;">{label}</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#1e40af;'
+            f'margin-top:2px;">{val:.2f}</div></div>',
+            unsafe_allow_html=True,
+        )
 
     # ── X-bar OOC injection ──────────────────────────────────────────────────
     st.markdown('<p class="sb-hdr">X-bar out-of-control injection</p>',
@@ -730,12 +738,4 @@ LCL(X̄) = X̄̄ − A₂·R̄ &nbsp;·&nbsp;
 UCL(R) = D₄·R̄ &nbsp;·&nbsp;
 LCL(R) = D₃·R̄ &nbsp;·&nbsp;
 σ̂ = R̄ / d₂
-
-**Derivations** &nbsp;&nbsp;
-A₂ = 3 / (d₂ √n) &nbsp;·&nbsp;
-D₄ = 1 + 3(d₃/d₂) &nbsp;·&nbsp;
-D₃ = max(0, 1 − 3(d₃/d₂))
-
-*d₂ = expected value of the relative range W = R/σ; &nbsp;
-d₃ = standard deviation of W (Studentized-range distribution)*
 """)
