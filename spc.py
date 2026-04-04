@@ -737,5 +737,4 @@ UCL(X̄) = X̄̄ + A₂·R̄ &nbsp;·&nbsp;
 LCL(X̄) = X̄̄ − A₂·R̄ &nbsp;·&nbsp;
 UCL(R) = D₄·R̄ &nbsp;·&nbsp;
 LCL(R) = D₃·R̄ &nbsp;·&nbsp;
-σ̂ = R̄ / d₂
 """)
